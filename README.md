@@ -40,6 +40,5 @@ Dependencias
 ```
 
 =======
-cdicalendar
+CdiCmdb
 ========
->>>>>>> branch 'master' of https://github.com/cincarnato/cdicalendar.git
