@@ -3,7 +3,9 @@
 namespace CdiCmdb;
 
 
-use Zend\ModuleManager\Feature\AutoloaderProviderInterface;
+use Zend\ModuleManager\Feature\AutoloaderProviderInterface,
+         Zend\ModuleManager\Feature\ConsoleUsageProviderInterface,
+           Zend\Console\Adapter\AdapterInterface as Console;
 
 /**
  * Module
@@ -11,7 +13,7 @@ use Zend\ModuleManager\Feature\AutoloaderProviderInterface;
  * @package   Cdi
  * @copyright Cristian Incarnato (c) - http://www.cincarnato.com
  */
-class Module implements AutoloaderProviderInterface {
+class Module implements AutoloaderProviderInterface, ConsoleUsageProviderInterface {
 
     public function init() {
         
@@ -35,6 +37,17 @@ class Module implements AutoloaderProviderInterface {
             return include __DIR__ . '/config/services.config.php';
     }
 
-  
+     public function getConsoleUsage(Console $console)
+    {
+    return array(
+            // Describe available commands
+            'get happen [--verbose|-v] <doname>'    => 'Get Process already happen',
+ 
+            // Describe expected parameters
+            array( 'doname',            'Process Name' ),
+            array( '--verbose|-v',     '(optional) turn on verbose mode'        ),
+ 
+    );
+    }
 
 }

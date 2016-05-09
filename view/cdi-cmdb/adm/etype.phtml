@@ -1,0 +1,55 @@
+
+<div class="row">
+    <div class="col-md-12 col-sm-12">
+
+        <div class="portlet portlet-default">
+
+            <div class="portlet-header">
+                <h4 class="portlet-title">
+                    <?php echo $this->entity; ?>
+                </h4>
+            </div> <!-- /.portlet-header -->
+
+            <div class="portlet-body">    
+                <?php echo $this->exec; ?>
+                <?php if ($this->result !== null): ?>
+
+                    <?php if ($this->result): ?>
+                        <div class="alert alert-success">Se actualizo el esquema</div>
+
+                    <?php else: ?>
+                        <div class="alert alert-danger">Error al actualizar el esquema. Por favor contacte a soporte.</div>
+                    <?php endif; ?>
+
+                <?php else: ?>
+                    <div class="alert alert-info">Sin actualizacion de esquema</div>
+                <?php endif; ?>
+
+                <?php echo $this->RenderCdiGrid($this->grid); ?>
+
+
+            </div> <!-- /.portlet-body -->
+
+        </div> <!-- /.portlet -->
+
+    </div>
+</div>
+
+<script>
+
+    $(function () {
+        $("#row_relatedEntity").hide();
+    });
+
+    function changetype() {
+        var types = $("[name='type'").val();
+        if (types == "oneToOne" || types == "manyToOne" || types == "oneToMany") {
+            $("#row_length").hide();
+            $("#row_relatedEntity").show();
+        } else {
+            $("#row_length").show();
+            $("#row_relatedEntity").hide();
+        }
+    }
+
+</script>
