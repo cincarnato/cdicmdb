@@ -1,0 +1,62 @@
+
+<div class="cview">
+    <div class="row">
+
+        <!-- /.col-lg-6 -->
+        <div class="col-lg-12">
+            <div class="panel panel-danger">
+                <div class="panel-heading">
+                  <?php echo $this->rentity->getName(); ?>
+                </div>
+                <!-- /.panel-heading -->
+                <div class="panel-body">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs">
+                        <li ><a href="#info" data-toggle="tab">info</a>
+                        </li>
+
+                        <?php foreach ($this->rentity->getProperties() as $property): ?>
+                            <?php if ($property->getType() == "oneToMany"): ?>
+                                <li ><a href="#<?php echo $property->getName(); ?>" data-toggle="tab"><?php echo $property->getName(); ?></a>
+                                </li>
+
+                            <?php endif; ?>
+
+
+                        <?php endforeach; ?>
+
+
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        
+                         <div class="tab-pane fade in active" id="info">
+                                    <?php echo $this->partial("cdi-cmdb/partial/entity", array("entity" => $this->entity)); ?>
+
+                                </div>
+                        
+                        <?php foreach ($this->rentity->getProperties() as $property): ?>
+
+                            <?php if ($property->getType() == "oneToMany"): ?>
+                                <div class="tab-pane fade in <?php echo $active; ?>" id="<?php echo $property->getName(); ?>">
+                                    <?php $method = "get" . ucfirst($property->getName()); ?>
+                                    <?php foreach ($this->entity->{$method}() as $e): ?>
+                                        <?php echo $this->partial("cdi-cmdb/partial/entity", array("entity" => $e)); ?>
+
+                                    <?php endforeach; ?>
+
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+
+
+                    </div>
+                </div>
+                <!-- /.panel-body -->
+            </div>
+            <!-- /.panel -->
+        </div>
+        <!-- /.col-lg-6 -->
+    </div>
+</div>

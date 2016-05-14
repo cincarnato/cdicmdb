@@ -48,7 +48,7 @@ class MainController extends AbstractActionController {
         $grid = $this->getServiceLocator()->get('cdiGrid');
         $source = new \CdiDataGrid\DataGrid\Source\Doctrine($this->getEntityManager(), $entity->getFullName());
         $grid->setSource($source);
-        $grid->setRecordPerPage(20);
+        $grid->setRecordPerPage(100);
         $grid->datetimeColumn('createdAt', 'Y-m-d H:i:s');
         $grid->datetimeColumn('updatedAt', 'Y-m-d H:i:s');
         $grid->datetimeColumn('expiration', 'Y-m-d H:i:s');
@@ -73,17 +73,42 @@ class MainController extends AbstractActionController {
                     'empty_item_label' => 'Todos',
                 ));
                 $grid->setFormFilterSelect($property->getRelatedEntity()->getName(), $filterType);
+                $grid->clinkColumn($property->getName(), array(array("path" => '/cdicmdb/main/view/', "data" => $property->getRelatedEntity()->getName()), array("path" => '/' . $property->getRelatedEntity()->getId(), "data" => "")));
             }
         }
 
+        $grid->addExtraColumn("View", "<a class='btn btn-success fa fa-binoculars' href='/cdicmdb/main/view/{{id}}/" . $entity->getId() . "' target='_blank'></a>", "left", false);
 
-        $grid->addEditOption("Edit", "left", "btn btn-success fa fa-edit");
-        $grid->addDelOption("Del", "left", "btn btn-warning fa fa-trash");
+        $grid->addEditOption("Edit", "left", "btn btn-primary fa fa-edit");
+        $grid->addDelOption("Del", "left", "btn btn-danger fa fa-trash");
         $grid->addNewOption("Add", "btn btn-primary fa fa-plus", " Agregar");
         $grid->setTableClass("table-condensed customClass");
 
         $grid->prepare();
         return array('grid' => $grid, 'entity' => $entity);
+    }
+
+    public function viewAction() {
+        //name
+        $id = $this->params("id");
+        //ID of Entity to filter and select
+        $eid = $this->params("eid");
+
+        $query = $this->getEntityManager()->createQueryBuilder()
+                ->select('u')
+                ->from('CdiEntity\Entity\Entity', 'u')
+                ->where("u.id = :id")
+                ->setParameter("id", $eid);
+        $rentity = $query->getQuery()->getOneOrNullResult();
+
+        $query = $this->getEntityManager()->createQueryBuilder()
+                ->select('u')
+                ->from($rentity->getFullName(), 'u')
+                ->where("u.id = :id")
+                ->setParameter("id", $id);
+
+        $entity = $query->getQuery()->getOneOrNullResult();
+        return array('entity' => $entity, 'rentity' => $rentity);
     }
 
     public function onetomanyAction() {

@@ -17,10 +17,10 @@ class Linux {
     protected $ssh;
     protected $host;
     protected $port = 22;
-    protected $timeout = 10;
+    protected $timeout = 30;
     protected $credentials = array();
     protected $alive = true;
-    protected $filename = "/var/www/crm/app/data/log/scanner.log";
+    protected $filename = "/var/www/cmdb/app/data/log/scanner.log";
     protected $maxFiles = 5;
     protected $level = Logger::DEBUG;
     protected $return;
@@ -34,15 +34,18 @@ class Linux {
 
     public function start() {
         $this->initLogger();
-        $this->connect();
-        $this->basic();
-        $this->interfaces();
-        $this->apache();
-        $this->javas();
-        $this->mysql();
-        $this->crones();
-        $this->ssh->disconnect();
-        return $this->return;
+        if ($this->connect()) {
+            $this->basic();
+            $this->interfaces();
+            $this->apache();
+            $this->javas();
+            $this->crones();
+            $this->mysql();
+            $this->ssh->disconnect();
+            return $this->return;
+        } else {
+            return $this->host . " no se pudo scanear";
+        }
     }
 
     protected function initLogger() {
@@ -57,28 +60,36 @@ class Linux {
     public function connect() {
         $this->ssh = new \phpseclib\Net\SSH2($this->host, $this->port, $this->timeout);
         $i = 1;
-        foreach ($this->credentials["ssh"] as $user => $pass) {
-            $result = $this->login($user, $pass);
+        foreach ($this->credentials["ssh"] as $credential) {
+            $result = $this->login($credential["user"], $credential["pass"]);
             if ($result) {
-                $this->logger->info(' Login exitoso credencial numero ' . $i);
+                $this->logger->info(' Login exitoso credencial numero ' . $i . $user . $pass . ' IP:' . $this->host);
+                return true;
                 break;
             } else {
-                $this->logger->warn(' Login fallido credencial numero ' . $i);
+                $this->logger->warn(' Login fallido credencial numero ' . $i . $user . $pass);
             }
 
             $i++;
         }
         if (!$result) {
-            $this->logger->error($i . ' Fallo de login con todas las credenciales suministradas');
+            $this->logger->error($i . ' Fallo de login con todas las credenciales suministradas IP:' . $this->host);
             $this->alive = false;
+            return false;
         }
     }
 
     protected function login($user, $pass) {
-        if (!$this->ssh->login($user, $pass)) {
-            return false;
-        } else {
-            return true;
+        try {
+            if (!$this->ssh->login($user, $pass)) {
+                return false;
+            } else {
+                return true;
+            }
+        } catch (\Exception $ex) {
+            $this->logger->error('Excepcion en login');
+        } catch (\RuntimeException $ex) {
+            $this->logger->error('RuntimeExcepcion en login');
         }
     }
 
@@ -111,17 +122,17 @@ class Linux {
         //Procesadores (Ver lscpu mas compacto, toda la info...)
         $procC = trim($this->ssh->exec('cat /proc/cpuinfo |grep  "processor"'));
         $countP = preg_match_all("/processor/", $procC);
-        $this->return["procesadoresCantidad"] = $countP;
+        $this->return["procesadores"] = $countP;
         $procM = trim($this->ssh->exec('cat /proc/cpuinfo |grep -m 1 "model name"'));
         if (preg_match("/model\sname/i", $procM)) {
-            $this->return["procesadoresModelo"] = trim(preg_replace("/model\sname\s*:/i", "", $procM));
+            $this->return["cpu"] = trim(preg_replace("/model\sname\s*:/i", "", $procM));
         }
 
         //Memoria
         $mem = trim($this->ssh->exec('free -m'));
         if (preg_match("/Mem:.*\n/", $mem, $m)) {
             preg_match_all("/\d+/", $m[0], $matches);
-            $this->return["memoriaTotal"] = trim($matches[0][0]) . "M";
+            $this->return["memoria"] = trim($matches[0][0]) . "M";
             $this->return["memoriaUsada"] = trim($matches[0][1]) . "M";
             $this->return["memoriaLibre"] = trim($matches[0][2]) . "M";
         }
@@ -141,7 +152,7 @@ class Linux {
 
         //Verificar si es virtual 
         $systemName = trim($this->ssh->exec('dmidecode -s system-product-name'));
-        $this->return["systemProduct"] = $systemName;
+        $this->return["system"] = $systemName;
 
         if (preg_match("/vmware|xen/i", $systemName)) {
             $this->return["type"] = "virtual";
@@ -200,13 +211,13 @@ class Linux {
         $apache = trim($this->ssh->exec('apachectl -v'));
 
         if (preg_match("/Server version:.*/", $apache, $m)) {
-            $this->return["webService"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
+            $this->return["webserver"]["software"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
 
             //Virtual host  apachectl -S
         } else {
             $apache = trim($this->ssh->exec('httpd -v'));
             if (preg_match("/Server version:.*/", $apache, $m)) {
-                $this->return["webService"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
+                $this->return["webserver"]["software"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
                 //Virtual host  httpd -S
             }
         }
@@ -214,13 +225,15 @@ class Linux {
 
     protected function javas() {
         $javas = trim($this->ssh->exec('ps aux|grep jar|grep -v "grep" '));
-        if (preg_match_all("/.*jar/", $javas, $ms)) {
+        if (preg_match_all("/\s\w*\.jar/i", $javas, $ms)) {
             $u = 1;
             foreach ($ms[0] as $j) {
-                $this->return["java"][$u]["name"] = $j;
+                
+                
+                $this->return["java"][$u]["name"] = trim($j);
 
                 //Locate
-                $locate = trim($this->ssh->exec('locate ' . $j));
+                $locate = trim($this->ssh->exec('locate ' . trim($j)));
                 $this->return["java"][$u]["locate"] = $locate;
                 $u++;
             }
@@ -228,37 +241,51 @@ class Linux {
     }
 
     protected function mysql() {
-        if ($this->mysqlConnect()) {
-            $version = trim($this->ssh->exec('SELECT @@version\G'));
-            if (preg_match("/@@version.*/", $version, $m)) {
-                $this->return["mysql"]["version"] = trim(preg_replace("/@@version:/", "", $m[0]));
+        //1. Credencial libre
+        if (!$this->mysqlLocal()) {
+            //2.Credenciales posibles
+            if (!$this->mysqlCredential()) {
+                echo "No se puede loguear al mysql";
             }
-            $dbs = trim($this->ssh->exec('show databases\G'));
+        }
+    }
+
+    protected function mysqlLocal() {
+        $version = trim($this->ssh->exec('mysql -e "SELECT @@version\G"'));
+        if (preg_match("/@@version.*/", $version, $m)) {
+            $this->return["mysql"]["version"] = trim(preg_replace("/@@version:/", "", $m[0]));
+
+            $dbs = trim($this->ssh->exec('mysql -e "show databases\G"'));
             if (preg_match_all("/Database.*/", $dbs, $ms)) {
                 foreach ($ms[0] as $value) {
-                    $this->return["mysql"]["dbs"][] = trim(preg_replace("/Database:/", "", $m[0]));
+                    $this->return["mysql"]["dbs"][] = trim(preg_replace("/Database:/", "", $value));
                 }
             }
-        }
-    }
-
-    protected function mysqlConnect() {
-        foreach ($this->credentials["mysql"] as $user => $pass) {
-            if ($this->mysqlLogin($user, $pass)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    protected function mysqlLogin($user, $pass) {
-
-        $login = trim($this->ssh->exec('mysql -u' . $user . ' -p' . $pass));
-        if (preg_match("/mysql|MariaDB/", $login)) {
             return true;
         } else {
             return false;
         }
+    }
+
+    protected function mysqlCredential() {
+
+        foreach ($this->credentials["mysql"] as $credential) {
+            $c = "-u" . $credential["user"] . " -p" . $credential["pass"];
+            $version = trim($this->ssh->exec('mysql ' . $c . ' -e "SELECT @@version\G"'));
+            if (preg_match("/@@version.*/", $version, $m)) {
+                $this->return["mysql"]["version"] = trim(preg_replace("/@@version:/", "", $m[0]));
+
+                $dbs = trim($this->ssh->exec('mysql ' . $c . ' -e "show databases\G"'));
+                if (preg_match_all("/Database.*/", $dbs, $ms)) {
+                    foreach ($ms[0] as $value) {
+                        $this->return["mysql"]["dbs"][] = trim(preg_replace("/Database:/", "", $value));
+                    }
+                }
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function crones() {
@@ -289,13 +316,13 @@ class Linux {
                             $this->return["crones"][$u]["hora"] = $val;
                             break;
                         case 2:
-                            $this->return["crones"][$u]["diaMes"] = $val;
+                            $this->return["crones"][$u]["diames"] = $val;
                             break;
                         case 3:
                             $this->return["crones"][$u]["mes"] = $val;
                             break;
                         case 4:
-                            $this->return["crones"][$u]["diaSemana"] = $val;
+                            $this->return["crones"][$u]["diasemana"] = $val;
                             break;
                         case 5:
                             $this->return["crones"][$u]["command"] = $val;

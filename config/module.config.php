@@ -30,11 +30,22 @@ return array(
                 'scan' => array(
                     'options' => array(
                         // add [ and ] if optional ( ex : [<doname>] )
-                        'route' => 'scan [--verbose|-v] <host> [<port>]',
+                        'route' => 'scan [--verbose|-v] <credentials> <hosts> [<port>]',
                         'defaults' => array(
                             '__NAMESPACE__' => 'CdiCmdb\Controller',
                             'controller' => 'Console',
                             'action' => 'scan'
+                        ),
+                    ),
+                ),
+                 'veraz' => array(
+                    'options' => array(
+                        // add [ and ] if optional ( ex : [<doname>] )
+                        'route' => 'veraz [--verbose|-v] <credentials> [<ok>]',
+                        'defaults' => array(
+                            '__NAMESPACE__' => 'CdiCmdb\Controller',
+                            'controller' => 'Console',
+                            'action' => 'veraz'
                         ),
                     ),
                 ),
