@@ -21,7 +21,7 @@
         "cdi/cdicommons": "dev-master",
         "cdi/cdiuser": "dev-master",
         "cdi/cdidatagrid": "dev-master",
-         "cdi/cdientity": "v2.1"
+         "cdi/cdientity": "dev-cmdb"
     },
     "autoload": {
         "psr-0": {
