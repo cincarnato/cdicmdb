@@ -20,8 +20,8 @@
         "php": ">=5.3.3",
         "cdi/cdicommons": "dev-master",
         "cdi/cdiuser": "dev-master",
-        "cdi/cdidatagrid": "dev-master",
-         "cdi/cdientity": "v2.5"
+        "cdi/cdidatagrid": ">=v1.4",
+         "cdi/cdientity": ">=v2.5"
     },
     "autoload": {
         "psr-0": {
