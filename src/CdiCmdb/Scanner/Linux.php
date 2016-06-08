@@ -37,10 +37,12 @@ class Linux {
         if ($this->connect()) {
             $this->basic();
             $this->interfaces();
+            $this->publicip();
             $this->apache();
             $this->javas();
             $this->crones();
             $this->mysql();
+            $this->php();
             $this->ssh->disconnect();
             return $this->return;
         } else {
@@ -161,6 +163,11 @@ class Linux {
         }
     }
 
+    protected function publicip() {
+        $ippublica = $this->ssh->exec('GET http://190.210.182.75/');
+        $this->return["ippublica"] = trim($ippublica);
+    }
+
     protected function interfaces() {
 
         $regexIp = "[0-9]*.[0-9]*.[0-9]*.[0-9]*";
@@ -187,6 +194,9 @@ class Linux {
                 if (preg_match("/inet\saddr:$regexIp/", $value, $m)) {
                     $val = preg_replace("/inet\saddr:/", "", $m[0]);
                     $this->return["interfaces"][$u]["ip"] = trim($val);
+                    if (preg_match("/eth/", $this->return["interfaces"][$u]["name"])) {
+                        $serverIpPrivada .= trim($val) . " | ";
+                    }
                 }
 
 
@@ -200,6 +210,9 @@ class Linux {
 
                 $u++;
             }
+
+            $serverIpPrivada = trim($serverIpPrivada, " | ");
+            $this->return["ipprivada"] = $serverIpPrivada;
         } else {
             $this->logger->warn('Sin Concordancia en regex interfaces ' . $i);
         }
@@ -214,12 +227,62 @@ class Linux {
             $this->return["webserver"]["software"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
 
             //Virtual host  apachectl -S
+            $vhost = trim($this->ssh->exec('apachectl -S'));
+            if (preg_match_all("/namevhost.*|alias.*/", $vhost, $ma)) {
+                $u = 1;
+                foreach ($ma[0] as $line) {
+
+                    if (preg_match("/namevhost/", $line)) {
+                        $e = explode(" ", $line);
+                        $lastConf = $e[2];
+                        $this->return["webserver"]["vhost"][$u]["url"] = $e[1];
+                        $this->return["webserver"]["vhost"][$u]["conf"] = $e[2];
+                        $this->return["webserver"]["vhost"][$u]["tipo"] = "namevhost";
+                    }
+
+                    if (preg_match("/alias/", $line)) {
+                        $this->return["webserver"]["vhost"][$u]["url"] = $e[1];
+                        $this->return["webserver"]["vhost"][$u]["conf"] = $lastConf;
+                        $this->return["webserver"]["vhost"][$u]["tipo"] = "alias";
+                    }
+                    $u++;
+                }
+            }
         } else {
             $apache = trim($this->ssh->exec('httpd -v'));
             if (preg_match("/Server version:.*/", $apache, $m)) {
                 $this->return["webserver"]["software"] = trim(preg_replace("/Server\sversion:/", "", $m[0]));
                 //Virtual host  httpd -S
+                $vhost = trim($this->ssh->exec('httpd -S'));
+                if (preg_match_all("/namevhost.*|alias.*/", $vhost, $ma)) {
+                    $u = 1;
+                    foreach ($ma[0] as $line) {
+
+                        if (preg_match("/namevhost/", $line)) {
+                            $e = explode(" ", $line);
+                            $lastConf = $e[2];
+                            $this->return["webserver"]["vhost"][$u]["url"] = $e[1];
+                            $this->return["webserver"]["vhost"][$u]["conf"] = $e[2];
+                            $this->return["webserver"]["vhost"][$u]["tipo"] = "namevhost";
+                        }
+
+                        if (preg_match("/alias/", $line)) {
+                            $this->return["webserver"]["vhost"][$u]["url"] = $e[1];
+                            $this->return["webserver"]["vhost"][$u]["conf"] = $lastConf;
+                            $this->return["webserver"]["vhost"][$u]["tipo"] = "alias";
+                        }
+                        $u++;
+                    }
+                }
             }
+        }
+    }
+
+    protected function php() {
+        $php = trim($this->ssh->exec('php -v'));
+        if (preg_match("/PHP (\d*\.)*.*\s/", $php, $m)) {
+            $phpv = trim(preg_replace("/PHP|\s/", "", $m[0]));
+            $this->return["php"]["version"] = $phpv;
         }
     }
 
@@ -228,8 +291,8 @@ class Linux {
         if (preg_match_all("/\s\w*\.jar/i", $javas, $ms)) {
             $u = 1;
             foreach ($ms[0] as $j) {
-                
-                
+
+
                 $this->return["java"][$u]["name"] = trim($j);
 
                 //Locate
@@ -258,7 +321,9 @@ class Linux {
             $dbs = trim($this->ssh->exec('mysql -e "show databases\G"'));
             if (preg_match_all("/Database.*/", $dbs, $ms)) {
                 foreach ($ms[0] as $value) {
+                    if(!preg_match("/mysql|performance_schema|information_schema/i", $subject)){
                     $this->return["mysql"]["dbs"][] = trim(preg_replace("/Database:/", "", $value));
+                    }
                 }
             }
             return true;

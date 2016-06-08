@@ -78,7 +78,7 @@ return array(
                     ),
                     'defaults' => array(
                         'controller' => 'CdiCmdb\Controller\Main',
-                        'action' => 'index',
+                        'action' => 'type',
                     ),
                 ),
             ),

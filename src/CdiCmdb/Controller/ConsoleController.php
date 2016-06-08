@@ -103,24 +103,30 @@ class ConsoleController extends AbstractActionController {
                 ->select('u')
                 ->from('CdiCmdb\Entity\servidor', 'u')
                 ->where("u.hostname = :hostname")
+       //          ->where("u.ipprivada = :ipprivada")
                 ->setParameter("hostname", $result["hostname"]);
+          //       ->setParameter("ipprivada", $result["ipprivada"]);
 
         $servidor = $query->getQuery()->getOneOrNullResult();
 
         if (!$servidor) {
             $servidor = new \CdiCmdb\Entity\servidor();
             $servidor->setHostname($result["hostname"]);
-            $servidor->setSystemproduct($result["system"]);
-            $servidor->setArquitectura($result["arquitectura"]);
-            $servidor->setProcesadores($result["procesadores"]);
-            $servidor->setCpu($result["cpu"]);
-            $servidor->setMemoria($result["memoria"]);
-            $servidor->setDistro($result["distro"]);
-            $servidor->setDistrorelease($result["release"]);
-            $servidor->setTipo($result["type"]);
-            $this->getEntityManager()->persist($servidor);
-            $this->getEntityManager()->flush();
         }
+
+        $servidor->setSystemproduct($result["system"]);
+        $servidor->setArquitectura($result["arquitectura"]);
+        $servidor->setProcesadores($result["procesadores"]);
+        $servidor->setCpu($result["cpu"]);
+        $servidor->setMemoria($result["memoria"]);
+        $servidor->setDistro($result["distro"]);
+        $servidor->setDistrorelease($result["release"]);
+        $servidor->setTipo($result["type"]);
+        $servidor->setIpprivada($result["ipprivada"]);
+        $servidor->setIppublica($result["ippublica"]);
+        $this->getEntityManager()->persist($servidor);
+        $this->getEntityManager()->flush();
+
 
         if (is_array($result["interfaces"])) {
             foreach ($result["interfaces"] as $interface) {
@@ -200,6 +206,23 @@ class ConsoleController extends AbstractActionController {
             }
         }
 
+        if ($result["php"]["version"]) {
+            $query = $this->getEntityManager()->createQueryBuilder()
+                    ->select('u')
+                    ->from('CdiCmdb\Entity\php', 'u')
+                    ->andWhere('u.servidor = :servidor')
+                    ->setParameter("servidor", $servidor);
+
+            $php = $query->getQuery()->getOneOrNullResult();
+
+            if (!$php) {
+                $php = new \CdiCmdb\Entity\php();
+                $php->setServidor($servidor);
+            }
+            $php->setVersion($result["php"]["version"]);
+            $this->getEntityManager()->persist($php);
+        }
+
         if ($result["mysql"]["version"]) {
 
             $query = $this->getEntityManager()->createQueryBuilder()
@@ -260,7 +283,32 @@ class ConsoleController extends AbstractActionController {
 
             $webserver->setSoftware($result["webserver"]["software"]);
             $this->getEntityManager()->persist($webserver);
+
+            if ($result["webserver"]["vhost"]) {
+                foreach ($result["webserver"]["vhost"] as $vhost) {
+                    $query = $this->getEntityManager()->createQueryBuilder()
+                            ->select('u')
+                            ->from('CdiCmdb\Entity\web', 'u')
+                            ->andWhere('u.url = :url')
+                            ->andWhere('u.servidor = :servidor')
+                            ->setParameter("url", $vhost["url"])
+                            ->setParameter("servidor", $servidor);
+
+                    $web = $query->getQuery()->getOneOrNullResult();
+                    if (!$web) {
+                        $web = new \CdiCmdb\Entity\web();
+                        $web->setServidor($servidor);
+                        $web->setUrl($vhost["url"]);
+                    }
+
+                    $web->setConf($vhost["conf"]);
+                    $web->setTipo($vhost["tipo"]);
+
+                    $this->getEntityManager()->persist($web);
+                }
+            }
         }
+
 
 
 

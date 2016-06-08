@@ -24,7 +24,7 @@ class Veraz {
     protected $maxFiles = 5;
     protected $level = Logger::DEBUG;
     protected $return;
-    protected $test = true;
+    protected $test = false;
 
     public function __construct($credentials) {
         $this->credentials = $credentials;
@@ -35,8 +35,9 @@ class Veraz {
 
         $this->ivrs("192.168.9.28");
         $this->ivrs("192.168.9.69");
+      //  $this->ivrspublico("190.210.97.17");
      //   $this->lnx21();
-       // $this->lnx13();
+        // $this->lnx13();
     }
 
     protected function test($file) {
@@ -94,13 +95,36 @@ class Veraz {
             return $this->host . " no se pudo conectar" . $ip;
         }
     }
+    
+    protected function ivrspublico($ip) {
+        $this->host = $ip;
+        $this->port = "22";
+        if ($this->connect()) {
+
+
+            #Tercera Maniobra
+            $file = '/usr/IVR/AsteriskService/conf/configBaseDatosVirualIvr.cfg';
+            $file = $this->test($file);
+            $replace = "190.210.97.44";
+            $new = "xxxxxxxxxxxxx";
+            $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
+            echo $result;
+
+
+            $this->ssh->disconnect();
+        } else {
+            return $this->host . " no se pudo conectar" . $ip;
+        }
+    }
 
     public function lnx21() {
+        echo "Entra a lnx21";
         $this->host = "192.168.9.160";
         $this->port = "22";
         if ($this->connect()) {
 
             #Primera Maniobra
+            echo "LNX21.Maniobra1".PHP_EOL;
             $file = '/script/verazivr/cron_habilita_derivaciones_veraz.php';
             $file = $this->test($file);
             $replace = "192.168.9.149";
@@ -109,6 +133,7 @@ class Veraz {
             echo $result;
 
             #segunda Maniobra
+              echo "LNX21.Maniobra2".PHP_EOL;
             $file = '/script/veraz/verazalertas/common/Datos.php';
             $file = $this->test($file);
             $replace = "192.168.9.149";
@@ -122,14 +147,14 @@ class Veraz {
             return $this->host . " no se pudo conectar lnx21";
         }
     }
-    
-        public function lnx13() {
+
+    public function lnx13() {
         $this->host = "192.168.9.39";
         $this->port = "22";
         if ($this->connect()) {
 
             #Primera Maniobra
-            $file = '/script/verazivr/cron_habilita_derivaciones_veraz.php';
+            $file = '/www/web2/veraz/veraz_1/php/configs/db.conf.inc';
             $file = $this->test($file);
             $replace = "192.168.9.149";
             $new = "192.168.34.118";
@@ -137,13 +162,45 @@ class Veraz {
             echo $result;
 
             #segunda Maniobra
-            $file = '/script/veraz/verazalertas/common/Datos.php';
+            $file = '/www/web2/veraz/veraz_2/php/configs/db.conf.inc';
             $file = $this->test($file);
             $replace = "192.168.9.149";
             $new = "192.168.34.118";
             $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
             echo $result;
 
+
+            #tercera Maniobra
+            $file = '/www/vivr/include/connect.php';
+            $file = $this->test($file);
+            $replace = "192.168.9.149";
+            $new = "192.168.34.118";
+            $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
+            echo $result;
+
+            #Cuarta Maniobra
+            $file = '/www/test.virtualivr/demo/include/connect.php';
+            $file = $this->test($file);
+            $replace = "192.168.9.149";
+            $new = "192.168.34.118";
+            $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
+            echo $result;
+
+            #quinta Maniobra
+            $file = '/www/test.virtualivr/include/connect.php';
+            $file = $this->test($file);
+            $replace = "192.168.9.149";
+            $new = "192.168.34.118";
+            $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
+            echo $result;
+
+            #sexta Maniobra
+            $file = '/var/www/html/snd/verazalerta/veraz.php';
+            $file = $this->test($file);
+            $replace = "192.168.9.149";
+            $new = "192.168.34.118";
+            $result = $this->ssh->exec("sed -i 's/" . $replace . "/" . $new . "/g' " . $file);
+            echo $result;
 
             $this->ssh->disconnect();
         } else {
@@ -170,7 +227,7 @@ class Veraz {
                 return true;
                 break;
             } else {
-                $this->logger->warn(' Login fallido credencial numero ' . $i . $user . $pass);
+                $this->logger->warn(' Login fallido credencial numero ' . $i . $user . $pass." ip".$this->host);
             }
 
             $i++;
@@ -190,9 +247,9 @@ class Veraz {
                 return true;
             }
         } catch (\Exception $ex) {
-            $this->logger->error('Excepcion en login');
+            $this->logger->error('Excepcion en login '.$ex);
         } catch (\RuntimeException $ex) {
-            $this->logger->error('RuntimeExcepcion en login');
+            $this->logger->error('RuntimeExcepcion en login '.$ex);
         }
     }
 

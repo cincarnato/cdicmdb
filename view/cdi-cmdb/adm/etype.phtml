@@ -38,15 +38,27 @@
 <script>
 
     $(function () {
-        $("#row_relatedEntity").hide();
+
+        changetype();
+
     });
 
     function changetype() {
         var types = $("[name='type'").val();
+
+        if (types == "file") {
+            $("#row_absolutepath").show();
+            $("#row_webpath").show();
+        } else {
+            $("#row_absolutepath").hide();
+            $("#row_webpath").hide();
+        }
+
         if (types == "oneToOne" || types == "manyToOne" || types == "oneToMany") {
             $("#row_length").hide();
             $("#row_relatedEntity").show();
         } else {
+
             $("#row_length").show();
             $("#row_relatedEntity").hide();
         }

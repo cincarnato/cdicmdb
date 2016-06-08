@@ -38,6 +38,7 @@ class AdmController extends AbstractActionController {
 
         $grid->addExtraColumn("<i class='fa fa-book ' ></i>", "<a class='btn btn-primary fa fa-book' href='/cdicmdb/main/abm/{{id}}' target='_blank'></a>", "right", false);
         $grid->addExtraColumn("<i class='fa fa-bars ' ></i>", "<a class='btn btn-warning fa fa-bars' href='/cdicmdb/adm/etype/{{id}}' target='_blank'></a>", "left", false);
+
         $grid->addEditOption("Edit", "left", "btn btn-success fa fa-edit");
         //$grid->addDelOption("Del", "left", "btn btn-warning fa fa-trash");
         $grid->addNewOption("Add", "btn btn-primary fa fa-plus", " Agregar");
@@ -98,6 +99,7 @@ class AdmController extends AbstractActionController {
                 $namespaces = new \CdiEntity\Entity\Namespaces();
                 $namespaces->setName($namespace);
                 $namespaces->setPath($path);
+                $namespaces->setPrefix("cmdb");
                 $this->getEntityManager()->persist($namespaces);
                 $this->getEntityManager()->flush();
             }
@@ -106,6 +108,8 @@ class AdmController extends AbstractActionController {
             $entity = new \CdiEntity\Entity\Entity();
             $entity->setName($entityName);
             $entity->setPath($path);
+            $entity->setTblName($entityName);
+            $entity->setExtends("\CdiCommons\Entity\BaseEntity");
             $entity->setNamespace($namespaces);
 
 
@@ -139,7 +143,16 @@ class AdmController extends AbstractActionController {
         $grid->addNewOption("Add", "btn btn-primary fa fa-plus", " Agregar");
         $grid->setTableClass("table-condensed customClass");
 
+      
+
         $grid->prepare();
+        
+        //Tengo que poner como requerido el campo entity cuando requiere relacion
+//          if ($this->request->getPost("crudAction") == "edit" || $this->request->getPost("crudAction") == "add") {
+//            if ($grid->getEntityForm()->get("type")->getValue() == "manyToOne" || $grid->getEntityForm()->get("type")->getValue() == "oneToOne") {
+//                $grid->getEntityForm()->getInputFilter()->get("relatedEntity")->setRequired(true);
+//            }
+//        }
 
 
         if ($this->request->getPost("crudAction") == "edit" || $this->request->getPost("crudAction") == "add") {
@@ -148,6 +161,8 @@ class AdmController extends AbstractActionController {
 
         $updateEntity = $this->getServiceLocator()->get('cdientity_generate_entity');
         $exec = $updateEntity->update($entity, true);
+
+
 
         if (preg_match("/Database\sschema\supdated/", $exec)) {
             $result = true;
